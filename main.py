@@ -1,4 +1,5 @@
 import random
+import time
 from fastapi import FastAPI, Query
 from duckduckgo_search import DDGS
 
@@ -11,32 +12,31 @@ PROXIES = [
 ]
 
 @app.get("/search")
-def search_internet(
-    q: str = Query(..., description="Запрос"),
-    limit: int = Query(5, description="Лимит результатов")
-):
-    # Выбираем случайный прокси, если список не пуст
-    proxy = random.choice(PROXIES) if PROXIES else None
+def search_internet(q: str, limit: int = 5):
+    # Копируем список, чтобы можно было удалять плохие прокси из попыток
+    available_proxies = PROXIES.copy()
+    max_retries = len(available_proxies) if available_proxies else 1
     
-    results = []
-    try:
-        # Передаем прокси в DDGS
-        with DDGS(proxy=proxy, timeout=20) as ddgs:
-            search_results = ddgs.text(q, max_results=limit, region='kz-kz')
-            for r in search_results:
-                results.append({
-                    "title": r['title'],
-                    "url": r['href'],
-                    "snippet": r['body']
-                })
+    for attempt in range(max_retries):
+        # Выбираем случайный прокси
+        proxy = random.choice(available_proxies) if available_proxies else None
         
-        return {
-            "status": "success",
-            "proxy_used": proxy, 
-            "count": len(results),
-            "results": results
-        }
-        
-    except Exception as e:
-        # Если прокси отвалился, вернем ошибку, чтобы знать какой именно
-        return {"status": "error", "proxy_attempted": proxy, "message": str(e)}
+        try:
+            with DDGS(proxy=proxy, timeout=15) as ddgs:
+                results = list(ddgs.text(q, max_results=limit))
+                if results:
+                    return {"status": "success", "proxy": proxy, "results": results}
+                
+                # Если пустой список — возможно, тоже бан или капча
+                raise Exception("Empty results (possible soft ban)")
+
+        except Exception as e:
+            print(f"Attempt {attempt+1} failed with proxy {proxy}: {e}")
+            # Удаляем плохой прокси из списка попыток для этого запроса
+            if proxy in available_proxies:
+                available_proxies.remove(proxy)
+            # Небольшая пауза перед следующей попыткой
+            time.sleep(1)
+            continue
+
+    return {"status": "error", "message": "All proxies failed or blocked"}
