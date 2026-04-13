@@ -22,7 +22,7 @@ def search_internet(
     try:
         # Передаем прокси в DDGS
         with DDGS(proxy=proxy, timeout=20) as ddgs:
-            search_results = ddgs.text(q, max_results=limit, region='wt-wt')
+            search_results = ddgs.text(q, max_results=limit, region='kz-kz')
             for r in search_results:
                 results.append({
                     "title": r['title'],
