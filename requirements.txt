@@ -2,3 +2,4 @@ fastapi
 uvicorn
 duckduckgo-search
 trafilatura
+lxml_html_clean

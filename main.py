@@ -5,12 +5,14 @@ import trafilatura
 app = FastAPI(title="SaaS Search Engine API")
 
 @app.get("/search")
-def search_internet(q: str = Query(..., description="Поисковый запрос")):
+def search_internet(
+    q: str = Query(..., description="Поисковый запрос"),
+    limit: int = Query(10, description="Количество результатов") # Добавили лимит
+):
     results = []
-    
-    # 1. Ищем ссылки через DuckDuckGo (бесплатно)
     with DDGS() as ddgs:
-        search_results = ddgs.text(q, max_results=3)
+        # Используем переменную limit вместо цифры 3
+        search_results = ddgs.text(q, max_results=limit)
         for r in search_results:
             results.append({
                 "title": r['title'],
@@ -18,7 +20,7 @@ def search_internet(q: str = Query(..., description="Поисковый запр
                 "snippet": r['body']
             })
     
-    return {"query": q, "results": results}
+    return {"query": q, "count": len(results), "results": results}
 
 @app.get("/extract")
 def extract_text(url: str = Query(..., description="URL статьи")):

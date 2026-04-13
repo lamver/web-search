@@ -5,7 +5,7 @@ services:
     build: .
     container_name: python-saas-search
     ports:
-      - "8002:8000"
+      - "${EXTERNAL_PORT}:8000"
     restart: always
     # Опционально: прокси, если DuckDuckGo начнет блокировать
     # environment:
