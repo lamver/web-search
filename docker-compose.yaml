@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  search-api:
+    build: .
+    container_name: python-saas-search
+    ports:
+      - "8002:8000"
+    restart: always
+    # Опционально: прокси, если DuckDuckGo начнет блокировать
+    # environment:
+    #   - HTTP_PROXY=http://your-proxy:port
