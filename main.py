@@ -1,37 +1,42 @@
+import random
 from fastapi import FastAPI, Query
 from duckduckgo_search import DDGS
-import trafilatura
 
-app = FastAPI(title="SaaS Search Engine API")
+app = FastAPI(title="SaaS Search API")
+
+# Список прокси прямо в коде
+# Формат: http://user:pass@host:port или http://host:port
+PROXIES = [
+    "socks5://C1La2C:C6QAtH@213.139.223.115:9875",
+]
 
 @app.get("/search")
 def search_internet(
-    q: str = Query(..., description="Поисковый запрос"),
-    limit: int = Query(10, description="Количество результатов") # Добавили лимит
+    q: str = Query(..., description="Запрос"),
+    limit: int = Query(5, description="Лимит результатов")
 ):
+    # Выбираем случайный прокси, если список не пуст
+    proxy = random.choice(PROXIES) if PROXIES else None
+    
     results = []
-    with DDGS() as ddgs:
-        # Используем переменную limit вместо цифры 3
-        #search_results = ddgs.text(q, max_results=limit)
-        # Добавляем конкретный регион и отключаем безопасный поиск
-        search_results = ddgs.text(q, region='wt-wt', safesearch='off', max_results=limit)
-        for r in search_results:
-            results.append({
-                "title": r['title'],
-                "url": r['href'],
-                "snippet": r['body']
-            })
-    
-    return {"query": q, "count": len(results), "results": results}
-
-@app.get("/extract")
-def extract_text(url: str = Query(..., description="URL статьи")):
-    # 2. Извлекаем чистый текст из статьи (без рекламы и меню)
-    downloaded = trafilatura.fetch_url(url)
-    content = trafilatura.extract(downloaded)
-    
-    return {"url": url, "content": content[:2000]} # Возвращаем первые 2000 символов
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    try:
+        # Передаем прокси в DDGS
+        with DDGS(proxy=proxy, timeout=20) as ddgs:
+            search_results = ddgs.text(q, max_results=limit, region='wt-wt')
+            for r in search_results:
+                results.append({
+                    "title": r['title'],
+                    "url": r['href'],
+                    "snippet": r['body']
+                })
+        
+        return {
+            "status": "success",
+            "proxy_used": proxy, 
+            "count": len(results),
+            "results": results
+        }
+        
+    except Exception as e:
+        # Если прокси отвалился, вернем ошибку, чтобы знать какой именно
+        return {"status": "error", "proxy_attempted": proxy, "message": str(e)}
