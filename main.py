@@ -12,7 +12,9 @@ def search_internet(
     results = []
     with DDGS() as ddgs:
         # Используем переменную limit вместо цифры 3
-        search_results = ddgs.text(q, max_results=limit)
+        #search_results = ddgs.text(q, max_results=limit)
+        # Добавляем конкретный регион и отключаем безопасный поиск
+        search_results = ddgs.text(q, region='wt-wt', safesearch='off', max_results=limit)
         for r in search_results:
             results.append({
                 "title": r['title'],
